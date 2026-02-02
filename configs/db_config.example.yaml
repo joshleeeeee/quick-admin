@@ -1,0 +1,69 @@
+# ========================================
+# 数据库连接配置文件（示例模板）
+# ========================================
+# 
+# 使用说明：
+# 1. 复制此文件为 db_config.yaml
+# 2. 修改为你的实际数据库配置
+# 3. db_config.yaml 已被 .gitignore 忽略，不会提交
+#
+# 支持的数据库类型：mysql / oracle / postgresql / sqlite
+# ========================================
+
+
+# ----------------------------------------
+# 【Demo 模式】SQLite 演示数据库（开箱即用）
+# ----------------------------------------
+# 无需配置外部数据库，使用内置示例数据体验功能
+# 首次使用请运行: python scripts/init_demo.py
+demo:
+  type: "sqlite"
+  host: "localhost"
+  port: 0
+  user: "demo"
+  password: "demo"
+  database: "data/demo.db"
+
+
+# ----------------------------------------
+# 【示例】MySQL 数据库
+# ----------------------------------------
+default:
+  type: "mysql"
+  host: "192.168.1.100"       # 数据库服务器IP
+  port: 3306                  # 端口号
+  user: "your_user"           # 用户名
+  password: "your_password"   # 密码
+  database: "your_database"   # 数据库名
+
+
+# ----------------------------------------
+# 【示例】Oracle 直连
+# ----------------------------------------
+# oracle_prod:
+#   type: "oracle"
+#   host: "192.168.1.100"
+#   port: 1521
+#   user: "your_user"
+#   password: "your_password"
+#   database: "your_service_name"
+#   service_name: true
+
+
+# ----------------------------------------
+# 【示例】Oracle + SSH 跳板机
+# ----------------------------------------
+# oracle_via_jump:
+#   type: "oracle"
+#   host: "10.0.0.100"          # 目标数据库IP
+#   port: 1521
+#   user: "db_user"
+#   password: "db_password"
+#   database: "service_name"
+#   service_name: true
+#   ssh:
+#     host: "jump.example.com"  # 跳板机IP
+#     port: 22
+#     user: "ssh_user"
+#     password: "ssh_password"
+#     # key_file: "~/.ssh/id_rsa"

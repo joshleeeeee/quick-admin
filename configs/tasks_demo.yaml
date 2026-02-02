@@ -1,0 +1,232 @@
+# ============================================================
+# Demo 模式任务配置
+# ============================================================
+# 
+# 这些任务用于演示 Quick-Admin 的各种功能
+# 首次使用请运行: python scripts/init_demo.py 初始化数据库
+#
+# ============================================================
+
+
+# ============================================================
+# 查询类任务
+# ============================================================
+
+# 🔍 用户查询
+- id: "demo_query_users"
+  title: "🔍 查询用户"
+  description: "根据条件查询用户信息（用户名、状态、角色）"
+  type: "read"
+  sql: |
+    SELECT * FROM users
+    WHERE 
+      (username LIKE '%' || :keyword || '%' OR :keyword IS NULL OR :keyword = '')
+      AND (status = :status OR :status IS NULL OR :status = '')
+      AND (role = :role OR :role IS NULL OR :role = '')
+    ORDER BY user_id
+  params:
+    - name: "keyword"
+      label: "🔤 用户名关键词"
+      widget: "text"
+      placeholder: "模糊匹配用户名（可选）"
+      required: false
+    - name: "status"
+      label: "📊 状态"
+      widget: "select"
+      required: false
+      options:
+        - label: "全部"
+          value: ""
+        - label: "🟢 正常"
+          value: "active"
+        - label: "🔴 停用"
+          value: "inactive"
+    - name: "role"
+      label: "👤 角色"
+      widget: "select"
+      required: false
+      options:
+        - label: "全部"
+          value: ""
+        - label: "管理员"
+          value: "admin"
+        - label: "普通用户"
+          value: "user"
+        - label: "编辑"
+          value: "editor"
+
+# 🔍 订单查询
+- id: "demo_query_orders"
+  title: "🔍 查询订单"
+  description: "根据订单号、状态、金额范围查询订单"
+  type: "read"
+  sql: |
+    SELECT 
+      o.order_id,
+      o.order_no,
+      u.username,
+      o.product_name,
+      o.quantity,
+      o.amount,
+      o.status,
+      o.created_at,
+      o.paid_at
+    FROM orders o
+    LEFT JOIN users u ON o.user_id = u.user_id
+    WHERE 
+      (o.order_no LIKE '%' || :order_no || '%' OR :order_no IS NULL OR :order_no = '')
+      AND (o.status = :status OR :status IS NULL OR :status = '')
+    ORDER BY o.created_at DESC
+  params:
+    - name: "order_no"
+      label: "📋 订单号"
+      widget: "text"
+      placeholder: "模糊匹配订单号（可选）"
+      required: false
+    - name: "status"
+      label: "📊 状态"
+      widget: "select"
+      required: false
+      options:
+        - label: "全部"
+          value: ""
+        - label: "⏳ 待支付"
+          value: "pending"
+        - label: "💰 已支付"
+          value: "paid"
+        - label: "📦 已发货"
+          value: "shipped"
+        - label: "✅ 已完成"
+          value: "completed"
+        - label: "❌ 已取消"
+          value: "cancelled"
+
+# 🔍 操作日志查询
+- id: "demo_query_logs"
+  title: "🔍 查询操作日志"
+  description: "查询用户操作日志记录"
+  type: "read"
+  sql: |
+    SELECT 
+      l.log_id,
+      u.username,
+      l.action,
+      l.target_table,
+      l.ip_address,
+      l.created_at
+    FROM operation_logs l
+    LEFT JOIN users u ON l.user_id = u.user_id
+    WHERE 
+      (l.action = :action OR :action IS NULL OR :action = '')
+    ORDER BY l.created_at DESC
+    LIMIT 100
+  params:
+    - name: "action"
+      label: "📊 操作类型"
+      widget: "select"
+      required: false
+      options:
+        - label: "全部"
+          value: ""
+        - label: "🔑 登录"
+          value: "login"
+        - label: "🚪 登出"
+          value: "logout"
+        - label: "✏️ 更新"
+          value: "update"
+        - label: "🗑️ 删除"
+          value: "delete"
+        - label: "➕ 创建"
+          value: "create"
+
+# 🔍 系统配置查询
+- id: "demo_query_configs"
+  title: "🔍 查询系统配置"
+  description: "查看所有系统配置项"
+  type: "read"
+  sql: |
+    SELECT * FROM configs ORDER BY config_id
+
+# ============================================================
+# 编辑类任务
+# ============================================================
+
+# ✏️ 编辑用户
+- id: "demo_edit_user"
+  title: "✏️ 编辑用户信息"
+  description: "在表格中直接修改用户信息，生成 UPDATE 语句后确认执行"
+  type: "edit"
+  table: "users"
+  primary_key: "user_id"
+  sql: |
+    SELECT user_id, username, email, phone, status, role, remark
+    FROM users
+    WHERE user_id = :user_id OR :user_id IS NULL OR :user_id = ''
+    LIMIT 10
+  params:
+    - name: "user_id"
+      label: "🆔 用户ID"
+      widget: "text"
+      placeholder: "输入用户ID，或留空查看前10条"
+      required: false
+
+# ✏️ 编辑订单
+- id: "demo_edit_order"
+  title: "✏️ 编辑订单状态"
+  description: "修改订单状态、备注等信息"
+  type: "edit"
+  table: "orders"
+  primary_key: "order_id"
+  sql: |
+    SELECT order_id, order_no, status, remark
+    FROM orders
+    WHERE order_no = :order_no
+  params:
+    - name: "order_no"
+      label: "📋 订单号"
+      widget: "text"
+      placeholder: "输入完整订单号"
+      required: true
+
+# ============================================================
+# 操作类任务
+# ============================================================
+
+# ⚠️ 批量停用用户
+- id: "demo_disable_user"
+  title: "⚠️ 停用用户"
+  description: "将指定用户状态设置为停用，并记录操作日志"
+  type: "write"
+  sqls:
+    - name: "1. 记录操作日志"
+      sql: |
+        INSERT INTO operation_logs (user_id, action, target_table, target_id, created_at)
+        SELECT user_id, 'disable', 'users', user_id, datetime('now')
+        FROM users WHERE user_id = :user_id
+    - name: "2. 更新用户状态"
+      sql: |
+        UPDATE users SET status = 'inactive', updated_at = datetime('now')
+        WHERE user_id = :user_id
+  params:
+    - name: "user_id"
+      label: "🆔 用户ID"
+      widget: "text"
+      placeholder: "输入要停用的用户ID"
+      required: true
+
+# ============================================================
+# 通用查询
+# ============================================================
+
+- id: "demo_custom_sql"
+  title: "🛠️ 执行自定义查询"
+  description: "执行自定义的只读 SQL 查询（仅限 SELECT）"
+  type: "read"
+  sql: ":custom_sql"
+  custom_sql: true
+  params:
+    - name: "custom_sql"
+      label: "SQL语句"
+      widget: "textarea"
+      placeholder: "请输入 SELECT 查询语句..."
+      required: true

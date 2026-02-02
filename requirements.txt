@@ -1,0 +1,18 @@
+# Quick-Admin Dependencies
+# Web Framework
+streamlit>=1.28.0
+
+# Database
+sqlalchemy>=2.0.0
+pymysql>=1.1.0
+oracledb>=2.0.0  # Oracle 数据库驱动（可选，使用 Oracle 时需安装）
+sshtunnel>=0.4.0  # SSH 隧道支持（可选，通过跳板机连接时需安装）
+
+# Configuration
+pyyaml>=6.0.1
+
+# Data Processing
+pandas>=2.0.0
+
+# Security (for password hashing)
+bcrypt>=4.1.0

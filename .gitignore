@@ -1,0 +1,83 @@
+# =============================================
+# Instant-Admin .gitignore
+# =============================================
+
+# ===================
+# Python
+# ===================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+*.manifest
+*.spec
+
+# ===================
+# Virtual environments
+# ===================
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# ===================
+# IDE / Editor
+# ===================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ===================
+# OS
+# ===================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===================
+# Streamlit
+# ===================
+.streamlit/secrets.toml
+
+# ===================
+# Logs
+# ===================
+*.log
+logs/
+
+# ===================
+# Demo 数据
+# ===================
+data/
+
+# ===================
+# 本地配置（敏感数据，不提交）
+# ===================
+# 使用 .example.yaml 作为模板
+# 复制为 .yaml 后进行本地配置
+
+# 数据库配置（包含密码）
+configs/db_config.yaml
+
+# 任务配置（包含定制化任务）
+configs/tasks.yaml
+
+# 其他可能的本地配置
+configs/*.local.yaml

@@ -1,0 +1,98 @@
+# ============================================================
+# 运维任务配置文件（示例模板）
+# ============================================================
+# 
+# 使用说明：
+# 1. 复制此文件为 tasks.yaml
+# 2. 添加你的自定义任务
+# 3. tasks.yaml 已被 .gitignore 忽略，不会提交
+#
+# 任务类型：
+# - read: 查询任务（SELECT）
+# - write: 写入任务（INSERT/UPDATE/DELETE）
+# - edit: 编辑任务（表格直接编辑，自动生成 UPDATE）
+#
+# ============================================================
+
+
+# ============================================================
+# 查询类任务示例
+# ============================================================
+
+- id: "example_query"
+  title: "🔍 示例查询"
+  description: "这是一个示例查询任务"
+  type: "read"
+  sql: |
+    SELECT * FROM your_table
+    WHERE column1 = :param1
+      OR :param1 IS NULL
+    ORDER BY id DESC
+  params:
+    - name: "param1"
+      label: "参数1"
+      widget: "text"
+      placeholder: "输入查询条件"
+      required: false
+
+
+# ============================================================
+# 编辑类任务示例
+# ============================================================
+
+- id: "example_edit"
+  title: "✏️ 示例编辑"
+  description: "在表格中直接修改数据"
+  type: "edit"
+  table: "your_table"          # 目标表名
+  primary_key: "id"            # 主键列名（必须）
+  sql: |
+    SELECT id, column1, column2, column3
+    FROM your_table
+    WHERE id = :id
+  params:
+    - name: "id"
+      label: "记录ID"
+      widget: "text"
+      required: true
+
+
+# ============================================================
+# 批量操作示例（多条 SQL 顺序执行）
+# ============================================================
+
+- id: "example_batch"
+  title: "⚠️ 示例批量操作"
+  description: "执行多条 SQL，失败时自动停止"
+  type: "write"
+  sqls:
+    - name: "1. 备份数据"
+      sql: |
+        INSERT INTO backup_table
+        SELECT * FROM main_table WHERE id = :id
+    - name: "2. 更新数据"
+      sql: |
+        UPDATE main_table SET status = 'processed' WHERE id = :id
+  params:
+    - name: "id"
+      label: "记录ID"
+      widget: "text"
+      required: true
+
+
+# ============================================================
+# 通用自定义查询
+# ============================================================
+
+- id: "execute_custom_sql"
+  title: "🛠️ 执行自定义查询"
+  description: "执行自定义的只读SQL查询（仅限SELECT）"
+  type: "read"
+  sql: ":custom_sql"
+  custom_sql: true
+  params:
+    - name: "custom_sql"
+      label: "SQL语句"
+      widget: "textarea"
+      placeholder: "请输入SELECT查询语句..."
+      required: true
