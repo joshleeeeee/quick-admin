@@ -5,36 +5,64 @@
 
 import hashlib
 import os
+from pathlib import Path
 from typing import Tuple
 
 import streamlit as st
+import yaml
 
 
-# 默认管理员密码（实际使用时应该从环境变量或配置文件读取）
-# 这里使用 SHA256 哈希存储密码
-# 默认密码: admin123
-DEFAULT_PASSWORD_HASH = hashlib.sha256("admin123".encode()).hexdigest()
+# 默认密码（仅当配置文件和环境变量都不存在时使用）
+DEFAULT_PASSWORD = "admin123"
+
+
+def _load_auth_config() -> dict:
+    """
+    加载认证配置文件
+    优先加载 auth.yaml，不存在则加载 auth.example.yaml
+    """
+    config_dir = Path(__file__).parent.parent / "configs"
+    
+    auth_file = config_dir / "auth.yaml"
+    if auth_file.exists():
+        with open(auth_file, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    
+    example_file = config_dir / "auth.example.yaml"
+    if example_file.exists():
+        with open(example_file, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    
+    return {}
 
 
 def get_password_hash() -> str:
     """
     获取密码哈希值
-    优先从环境变量读取，否则使用默认值
+    优先级：环境变量 > 配置文件 > 默认值
     
     Returns:
         密码哈希值
     """
-    # 可以从环境变量设置密码哈希
-    env_hash = os.environ.get("INSTANT_ADMIN_PASSWORD_HASH")
+    # 1. 从环境变量读取哈希
+    env_hash = os.environ.get("QUICK_ADMIN_PASSWORD_HASH")
     if env_hash:
         return env_hash
     
-    # 也可以从环境变量设置明文密码（会自动转换为哈希）
-    env_password = os.environ.get("INSTANT_ADMIN_PASSWORD")
+    # 2. 从环境变量读取明文密码
+    env_password = os.environ.get("QUICK_ADMIN_PASSWORD")
     if env_password:
         return hashlib.sha256(env_password.encode()).hexdigest()
     
-    return DEFAULT_PASSWORD_HASH
+    # 3. 从配置文件读取
+    config = _load_auth_config()
+    if config.get("password_hash"):
+        return config["password_hash"]
+    if config.get("password"):
+        return hashlib.sha256(config["password"].encode()).hexdigest()
+    
+    # 4. 使用默认密码
+    return hashlib.sha256(DEFAULT_PASSWORD.encode()).hexdigest()
 
 
 def verify_password(password: str) -> bool:
@@ -126,7 +154,7 @@ def login() -> None:
         
         st.markdown("---")
         st.caption("💡 默认密码: admin123")
-        st.caption("🔧 可通过环境变量 INSTANT_ADMIN_PASSWORD 自定义密码")
+        st.caption("🔧 可通过 configs/auth.yaml 或环境变量 QUICK_ADMIN_PASSWORD 修改")
 
 
 def logout() -> None:

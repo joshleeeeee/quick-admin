@@ -79,5 +79,8 @@ configs/db_config.yaml
 # 任务配置（包含定制化任务）
 configs/tasks.yaml
 
+# 认证配置（包含密码）
+configs/auth.yaml
+
 # 其他可能的本地配置
 configs/*.local.yaml

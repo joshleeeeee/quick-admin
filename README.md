@@ -168,6 +168,28 @@ oracle_via_jump:
     # key_file: ~/.ssh/id_rsa  # 或使用密钥
 ```
 
+### 管理员密码配置
+
+默认密码为 `admin123`。修改方式：
+
+1. **配置文件（推荐）**
+
+   ```bash
+   cp configs/auth.example.yaml configs/auth.yaml
+   ```
+   
+   在 `auth.yaml` 中设置密码：
+   
+   ```yaml
+   password: "your_new_password"
+   ```
+
+2. **环境变量**
+
+   ```bash
+   export QUICK_ADMIN_PASSWORD="your_new_password"
+   ```
+
 ### Oracle Instant Client
 
 macOS 用户需要安装 Oracle Instant Client：
@@ -204,7 +226,9 @@ quick-admin/
 │   ├── db_config.yaml              # 数据库配置（本地）❌ 忽略
 │   ├── tasks.example.yaml          # 任务配置模板 ✅ 提交
 │   ├── tasks.yaml                  # 任务配置（本地）❌ 忽略
-│   └── tasks_demo.yaml             # Demo 任务 ✅ 提交
+│   ├── tasks_demo.yaml             # Demo 任务 ✅ 提交
+│   ├── auth.example.yaml           # 认证配置模板 ✅ 提交
+│   └── auth.yaml                   # 认证配置（本地）❌ 忽略
 ├── core/
 │   ├── auth.py                     # 认证模块
 │   ├── config_loader.py            # 配置加载器
