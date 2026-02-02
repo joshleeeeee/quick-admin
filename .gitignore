@@ -82,5 +82,8 @@ configs/tasks.yaml
 # 认证配置（包含密码）
 configs/auth.yaml
 
+# 内网穿透配置（包含 Token）
+configs/tunnel.yaml
+
 # 其他可能的本地配置
 configs/*.local.yaml

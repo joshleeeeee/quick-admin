@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.auth import check_authentication, login, logout
 from core.config_loader import config_loader
 from core.engine import db_engine
+from core.tunnel import start_tunnel
 
 
 # 页面配置
@@ -196,6 +197,19 @@ def render_sidebar() -> Optional[Dict[str, Any]]:
         # 登出按钮
         if st.button("🚪 退出登录", use_container_width=True):
             logout()
+        
+        # 内网穿透状态
+        if "public_url" not in st.session_state:
+            # 尝试启动隧道（只有配置启用时才会真正启动）
+            # 使用 cache 避免每次刷新都重连，但 start_tunnel 内部已有检查
+            url = start_tunnel()
+            if url:
+                st.session_state["public_url"] = url
+        
+        if "public_url" in st.session_state:
+            st.markdown("---")
+            st.success("🌏 **公网访问已开启**")
+            st.code(st.session_state["public_url"], language="text")
         
         # 版权信息
         st.markdown("---")

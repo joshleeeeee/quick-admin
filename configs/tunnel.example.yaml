@@ -1,0 +1,22 @@
+# ========================================
+# 内网穿透配置文件（示例模板）
+# ========================================
+#
+# 使用说明：
+# 1. 复制此文件为 tunnel.yaml
+# 2. 填写你的 ngrok Authtoken（可选，未填将匿名使用，有会话限制）
+# 3. 注册地址: https://dashboard.ngrok.com/get-started/your-authtoken
+# 
+# ========================================
+
+# 是否启用内网穿透（启动时自动生成公网 URL）
+enable: false
+
+# ngrok 认证令牌 (建议配置，否则连接不稳定且域名有效期短)
+auth_token: ""
+
+# 隧道协议 (通常是 http)
+protocol: "http"
+
+# 指定区域 (us, eu, ap, au, sa, jp, in)
+region: "ap"

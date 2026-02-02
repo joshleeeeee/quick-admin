@@ -16,3 +16,6 @@ pandas>=2.0.0
 
 # Security (for password hashing)
 bcrypt>=4.1.0
+
+# Tunnel (network access)
+pyngrok>=7.1.0

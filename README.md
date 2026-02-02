@@ -145,6 +145,30 @@ streamlit run app.py
 | `select` | 下拉选择 | 状态、类型 |
 | `date` | 日期选择 | 开始/结束日期 |
 
+### 🌏 内网穿透 (beta)
+
+内置 ngrok 支持，可一键生成公网访问地址。
+
+1. **启用穿透**：
+   复制配置文件：
+   ```bash
+   cp configs/tunnel.example.yaml configs/tunnel.yaml
+   ```
+   修改 `configs/tunnel.yaml`：
+   ```yaml
+   enable: true
+   auth_token: "your_ngrok_token"  # 推荐配置，否则受限
+   ```
+
+2. **环境变量方式**：
+   ```bash
+   export QUICK_ADMIN_TUNNEL_ENABLE=true
+   export QUICK_ADMIN_NGROK_TOKEN=your_token
+   ```
+
+3. **使用**：
+   启动 App 后，侧边栏底部会自动显示公网访问地址。
+
 ---
 
 ## 🔧 高级配置
@@ -228,11 +252,14 @@ quick-admin/
 │   ├── tasks.yaml                  # 任务配置（本地）❌ 忽略
 │   ├── tasks_demo.yaml             # Demo 任务 ✅ 提交
 │   ├── auth.example.yaml           # 认证配置模板 ✅ 提交
-│   └── auth.yaml                   # 认证配置（本地）❌ 忽略
+│   ├── auth.yaml                   # 认证配置（本地）❌ 忽略
+│   ├── tunnel.example.yaml         # 穿透配置模板 ✅ 提交
+│   └── tunnel.yaml                 # 穿透配置（本地）❌ 忽略
 ├── core/
 │   ├── auth.py                     # 认证模块
 │   ├── config_loader.py            # 配置加载器
-│   └── engine.py                   # 数据库引擎
+│   ├── engine.py                   # 数据库引擎
+│   └── tunnel.py                   # 穿透管理模块
 ├── scripts/
 │   ├── init_demo.py                # Demo 数据库初始化
 │   └── install_oracle_client.sh    # Oracle 客户端安装指引
