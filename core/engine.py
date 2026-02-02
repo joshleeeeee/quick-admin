@@ -285,6 +285,9 @@ class DatabaseEngine:
             # 获取列名
             columns = list(result.keys())
             
+            # 列名去重处理（防止 SQL 中 select t1.*, t2.* 导致重复列名）
+            columns = self._deduplicate_columns(columns)
+            
             # 获取所有数据
             rows = result.fetchall()
             
@@ -296,6 +299,30 @@ class DatabaseEngine:
                 df = self._apply_column_comments(df, sql, conn)
             
             return df
+            
+    def _deduplicate_columns(self, columns: List[str]) -> List[str]:
+        """
+        对列名列表进行去重
+        如果存在重复，添加后缀 _1, _2 等
+        
+        Args:
+            columns: 原始列名列表
+            
+        Returns:
+            去重后的列名列表
+        """
+        counts = {}
+        new_columns = []
+        
+        for col in columns:
+            if col not in counts:
+                counts[col] = 0
+                new_columns.append(col)
+            else:
+                counts[col] += 1
+                new_columns.append(f"{col}_{counts[col]}")
+        
+        return new_columns
 
     def _apply_column_comments(
         self, 
