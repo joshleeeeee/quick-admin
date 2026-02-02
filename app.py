@@ -452,20 +452,36 @@ def render_task_form(task: Dict[str, Any]) -> None:
             try:
                 with st.spinner("正在执行..."):
                     if task_type == "read":
-                        # 执行查询
+                        # 执行查询（带计时）
+                        start_time = time.time()
                         df = db_engine.execute_query(exec_sql, exec_params, db_env)
+                        end_time = time.time()
+                        duration = end_time - start_time
                         
                         st.markdown("### 📊 查询结果")
                         
                         # 显示结果统计
                         st.success(f"✅ 查询成功，共返回 **{len(df)}** 条记录")
+                        st.caption(f"⏱️ 耗时: **{duration:.4f}s**")
                         
                         if len(df) > 0:
+                            # 配置列显示（标记主键）
+                            column_config = {}
+                            primary_key = task.get("primary_key")
+                            if primary_key:
+                                # 尝试匹配列名（不区分大小写）
+                                for col in df.columns:
+                                    if col.lower() == primary_key.lower():
+                                        column_config[col] = st.column_config.Column(
+                                            label=f"🔑 {col}",
+                                        )
+                            
                             # 显示数据表格（支持排序和搜索）
                             st.dataframe(
                                 df,
                                 use_container_width=True,
                                 hide_index=True,
+                                column_config=column_config,
                             )
                             
                             # 提供下载选项
@@ -485,6 +501,8 @@ def render_task_form(task: Dict[str, Any]) -> None:
                         if sqls_config:
                             # 多条 SQL 批量执行
                             st.markdown("### 📋 执行结果")
+                            
+                            start_time = time.time()
                             total_affected = 0
                             success_count = 0
                             
@@ -502,15 +520,23 @@ def render_task_form(task: Dict[str, Any]) -> None:
                                     st.warning("⚠️ 后续 SQL 已停止执行")
                                     break
                             
+                            end_time = time.time()
+                            duration = end_time - start_time
+                            
                             if success_count == len(sqls_config):
                                 st.balloons()
                                 st.success(f"🎉 全部 {success_count} 条 SQL 执行成功！共影响 **{total_affected}** 行")
+                                st.caption(f"⏱️ 总耗时: **{duration:.4f}s**")
                         else:
                             # 单条 SQL 执行
+                            start_time = time.time()
                             affected_rows = db_engine.execute_write(exec_sql, exec_params, db_env)
+                            end_time = time.time()
+                            duration = end_time - start_time
                             
                             st.markdown("### ✅ 执行结果")
                             st.success(f"🎉 操作成功！共影响 **{affected_rows}** 行数据")
+                            st.caption(f"⏱️ 耗时: **{duration:.4f}s**")
                         
             except SQLAlchemyError as e:
                 st.error(f"❌ SQL 执行错误: {str(e)}")
@@ -588,7 +614,10 @@ def render_edit_form(task: Dict[str, Any]) -> None:
         
         try:
             with st.spinner("正在查询..."):
+                start_time = time.time()
                 df = db_engine.execute_query(sql, param_values, db_env, show_comments=False)
+                end_time = time.time()
+                duration = end_time - start_time
                 
                 if len(df) == 0:
                     st.info("📭 查询结果为空")
@@ -615,6 +644,9 @@ def render_edit_form(task: Dict[str, Any]) -> None:
                 st.session_state[result_key] = df.copy()
                 st.session_state[comments_key] = comments_map
                 
+                # 记录耗时
+                st.session_state[f"duration_{task['id']}"] = duration
+                
         except Exception as e:
             st.error(f"❌ 查询失败: {str(e)}")
             return
@@ -623,19 +655,32 @@ def render_edit_form(task: Dict[str, Any]) -> None:
     if result_key in st.session_state and original_key in st.session_state:
         original_df = st.session_state[original_key]
         comments_map = st.session_state.get(comments_key, {})
+        duration = st.session_state.get(f"duration_{task['id']}")
         
         st.markdown("### ✏️ 编辑数据")
-        st.caption(f"主键: `{primary_key}` | 表: `{table_name}` | 共 {len(original_df)} 条记录")
+        caption_text = f"主键: `{primary_key}` | 表: `{table_name}` | 共 {len(original_df)} 条记录"
+        if duration:
+            caption_text += f" | ⏱️ 耗时: **{duration:.4f}s**"
+        st.caption(caption_text)
         
         # 构建列配置，显示「列名(注释)」
         column_config = {}
         for col in original_df.columns:
-            col_upper = col.upper()
-            if col_upper in comments_map and comments_map[col_upper]:
-                comment = comments_map[col_upper]
-                if len(comment) > 10:
-                    comment = comment[:10] + "..."
-                column_config[col] = st.column_config.Column(label=f"{col}({comment})")
+            label = col
+            is_pk = col.lower() == primary_key.lower()
+            
+            # 1. 标记主键
+            if is_pk:
+                label = f"🔑 {label}"
+            
+            # 2. 如果有注释，添加注释
+            if col in comments_map and comments_map[col]:
+                label = f"{label} ({comments_map[col]})"
+            
+            column_config[col] = st.column_config.Column(
+                label=label,
+                disabled=is_pk,  # 主键不可编辑
+            )
         
         # 可编辑表格
         edited_df = st.data_editor(
