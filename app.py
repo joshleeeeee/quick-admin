@@ -480,16 +480,39 @@ def render_task_form(task: Dict[str, Any]) -> None:
                         st.caption(f"⏱️ 耗时: **{duration:.4f}s**")
                         
                         if len(df) > 0:
-                            # 配置列显示（标记主键）
+                            # 配置列显示（标记主键 + Tooltip）
                             column_config = {}
                             primary_key = task.get("primary_key")
-                            if primary_key:
-                                # 尝试匹配列名（不区分大小写）
-                                for col in df.columns:
-                                    if col.lower() == primary_key.lower():
-                                        column_config[col] = st.column_config.Column(
-                                            label=f"🔑 {col}",
-                                        )
+                            metadata_map = getattr(df, "attrs", {}).get("column_metadata", {})
+                            
+                            for col in df.columns:
+                                cfg = {}
+                                label = col
+                                
+                                # 解析原始列名（去除注释和后缀）
+                                # 格式如: "BILL_ID(票据ID)", "BILL_ID_1(票据ID)"
+                                col_clean = col.split("(")[0]
+                                if "_" in col_clean and col_clean.split("_")[-1].isdigit():
+                                    # 尝试去除 _1, _2 等后缀
+                                    parts = col_clean.split("_")
+                                    # 简单判断：如果最后一位是数字，可能是后缀
+                                    # 但有些字段本身带数字，这里只做简单去重匹配
+                                    col_base = "_".join(parts[:-1])
+                                else:
+                                    col_base = col_clean
+                                
+                                # 匹配主键
+                                if primary_key and col_clean.upper() == primary_key.upper():
+                                    label = f"🔑 {label}"
+                                    cfg["label"] = label
+                                
+                                # 添加 Tooltip (类型 + 完整注释)
+                                meta = metadata_map.get(col_clean) or metadata_map.get(col_base) or metadata_map.get(col)
+                                if meta:
+                                    cfg["help"] = meta["full_info"]
+                                
+                                if cfg:
+                                    column_config[col] = st.column_config.Column(**cfg)
                             
                             # 显示数据表格（支持排序和搜索）
                             st.dataframe(
@@ -645,19 +668,13 @@ def render_edit_form(task: Dict[str, Any]) -> None:
                     st.error(f"❌ 查询结果中没有主键列: {primary_key}")
                     return
                 
-                # 获取列注释
-                comments_map = {}
-                try:
-                    engine = db_engine.get_engine(db_env)
-                    with engine.connect() as conn:
-                        comments_map = db_engine._get_table_column_comments(conn, table_name)
-                except Exception:
-                    pass  # 获取注释失败不影响编辑
+                # 获取列元数据 (直接从 DataFrame 属性获取)
+                metadata_map = getattr(df, "attrs", {}).get("column_metadata", {})
                 
                 # 保存原始数据和可编辑数据
                 st.session_state[original_key] = df.copy()
                 st.session_state[result_key] = df.copy()
-                st.session_state[comments_key] = comments_map
+                st.session_state[comments_key] = metadata_map
                 
                 # 记录耗时
                 st.session_state[f"duration_{task['id']}"] = duration
@@ -669,7 +686,7 @@ def render_edit_form(task: Dict[str, Any]) -> None:
     # 显示可编辑表格
     if result_key in st.session_state and original_key in st.session_state:
         original_df = st.session_state[original_key]
-        comments_map = st.session_state.get(comments_key, {})
+        metadata_map = st.session_state.get(comments_key, {})
         duration = st.session_state.get(f"duration_{task['id']}")
         
         st.markdown("### ✏️ 编辑数据")
@@ -678,9 +695,10 @@ def render_edit_form(task: Dict[str, Any]) -> None:
             caption_text += f" | ⏱️ 耗时: **{duration:.4f}s**"
         st.caption(caption_text)
         
-        # 构建列配置，显示「列名(注释)」
+        # 构建列配置
         column_config = {}
         for col in original_df.columns:
+            cfg = {}
             label = col
             is_pk = col.lower() == primary_key.lower()
             
@@ -688,14 +706,24 @@ def render_edit_form(task: Dict[str, Any]) -> None:
             if is_pk:
                 label = f"🔑 {label}"
             
-            # 2. 如果有注释，添加注释
-            if col in comments_map and comments_map[col]:
-                label = f"{label} ({comments_map[col]})"
+            # 2. 如果有注释，添加注释到列名（简略）和 Tooltip（详细）
+            meta = metadata_map.get(col)
+            if meta:
+                # 简略注释放在标题
+                comment = meta.get("comment", "")
+                if comment:
+                    short_comment = comment
+                    if len(comment) > 10:
+                        short_comment = comment[:10] + "..."
+                    label = f"{label} ({short_comment})"
+                
+                # 详细信息放在 Tooltip
+                cfg["help"] = meta.get("full_info", "")
             
-            column_config[col] = st.column_config.Column(
-                label=label,
-                disabled=is_pk,  # 主键不可编辑
-            )
+            cfg["label"] = label
+            cfg["disabled"] = is_pk  # 主键不可编辑
+            
+            column_config[col] = st.column_config.Column(**cfg)
         
         # 可编辑表格
         edited_df = st.data_editor(

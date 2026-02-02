@@ -294,9 +294,9 @@ class DatabaseEngine:
             # 转换为 DataFrame
             df = pd.DataFrame(rows, columns=columns)
             
-            # Oracle: 获取列注释并重命名列
-            if show_comments and db_type == "oracle" and len(df) > 0:
-                df = self._apply_column_comments(df, sql, conn)
+            # Oracle: 获取列元数据并可能重命名列
+            if db_type == "oracle" and len(df) > 0:
+                df = self._apply_column_metadata(df, sql, conn, rename_cols=show_comments)
             
             return df
             
@@ -324,22 +324,24 @@ class DatabaseEngine:
         
         return new_columns
 
-    def _apply_column_comments(
+    def _apply_column_metadata(
         self, 
         df: pd.DataFrame, 
         sql: str, 
-        conn
+        conn,
+        rename_cols: bool = True
     ) -> pd.DataFrame:
         """
-        为 DataFrame 列名添加注释
+        获取元数据并选择性重命名列
         
         Args:
             df: 原始 DataFrame
             sql: 原始查询 SQL
             conn: 数据库连接
+            rename_cols: 是否将注释添加到列名中
             
         Returns:
-            列名带注释的 DataFrame
+            处理后的 DataFrame
         """
         try:
             # 从 SQL 中提取表名
@@ -347,32 +349,50 @@ class DatabaseEngine:
             if not table_names:
                 return df
             
-            # 获取所有相关表的列注释
-            comments_map = {}
+            # 获取所有相关表的列元数据
+            metadata_map = {}
             for table_name in table_names:
-                table_comments = self._get_table_column_comments(conn, table_name)
-                comments_map.update(table_comments)
+                table_metadata = self._get_table_column_metadata(conn, table_name)
+                metadata_map.update(table_metadata)
             
-            if not comments_map:
+            # 将元数据绑定到 DataFrame 的 attrs 中，供前端使用
+            df.attrs["column_metadata"] = metadata_map
+            
+            if not metadata_map or not rename_cols:
                 return df
             
             # 重命名列：COLUMN_NAME -> COLUMN_NAME(注释)
+            # 这里的逻辑保留，为了在表头直接能看到简短注释
             new_columns = []
             for col in df.columns:
+                # 去除可能的后缀（如 _1）以匹配元数据
+                # 但这里简单处理，直接尝试匹配
                 col_upper = col.upper()
-                if col_upper in comments_map and comments_map[col_upper]:
-                    comment = comments_map[col_upper]
-                    # 截断过长的注释
+                # 尝试去除 _1, _2 等后缀来匹配原始字段
+                original_col = col_upper
+                if "_" in col_upper and col_upper.split("_")[-1].isdigit():
+                    original_col = "_".join(col_upper.split("_")[:-1])
+                
+                comment = ""
+                if col_upper in metadata_map:
+                     comment = metadata_map[col_upper].get("comment", "")
+                elif original_col in metadata_map:
+                     comment = metadata_map[original_col].get("comment", "")
+                     
+                if comment:
+                    # 截断过长的注释用于表头显示
+                    short_comment = comment
                     if len(comment) > 10:
-                        comment = comment[:10] + "..."
-                    new_columns.append(f"{col}({comment})")
+                        short_comment = comment[:10] + "..."
+                    new_columns.append(f"{col}({short_comment})")
                 else:
                     new_columns.append(col)
             
             df.columns = new_columns
             return df
-        except Exception:
-            # 获取注释失败不影响主查询
+        except Exception as e:
+            # 打印错误防止静默失败
+            print(f"Error applying comments: {e}")
             return df
 
     def _extract_table_names(self, sql: str) -> List[str]:
@@ -402,32 +422,64 @@ class DatabaseEngine:
         
         return list(set(table_names))
 
-    def _get_table_column_comments(
+    def _get_table_column_metadata(
         self, 
         conn, 
         table_name: str
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Dict[str, str]]:
         """
-        获取表的列注释
+        获取表的列元数据（注释、类型等）
         
         Args:
             conn: 数据库连接
             table_name: 表名
             
         Returns:
-            {列名: 注释} 字典
+            {列名: {comment: "...", type: "VARCHAR2(50)"}}
         """
         try:
+            # 联合查询列信息和注释
             sql = """
-                SELECT COLUMN_NAME, COMMENTS 
-                FROM USER_COL_COMMENTS 
-                WHERE TABLE_NAME = :table_name
+                SELECT 
+                    t.COLUMN_NAME, 
+                    c.COMMENTS,
+                    t.DATA_TYPE,
+                    t.DATA_LENGTH,
+                    t.DATA_PRECISION,
+                    t.DATA_SCALE
+                FROM USER_TAB_COLUMNS t
+                LEFT JOIN USER_COL_COMMENTS c 
+                    ON t.TABLE_NAME = c.TABLE_NAME AND t.COLUMN_NAME = c.COLUMN_NAME
+                WHERE t.TABLE_NAME = :table_name
             """
             result = conn.execute(text(sql), {"table_name": table_name.upper()})
             rows = result.fetchall()
             
-            return {row[0]: row[1] for row in rows if row[1]}
-        except Exception:
+            metadata = {}
+            for row in rows:
+                col_name = row[0]
+                comment = row[1] if row[1] else ""
+                data_type = row[2]
+                
+                # 格式化类型，例如 VARCHAR2(50), NUMBER(10,2)
+                type_desc = data_type
+                if data_type in ["VARCHAR2", "CHAR", "NVARCHAR2"]:
+                    type_desc = f"{data_type}({row[3]})"
+                elif data_type == "NUMBER":
+                    if row[4] is not None and row[5] is not None:
+                        type_desc = f"{data_type}({row[4]},{row[5]})"
+                    elif row[4] is not None:
+                         type_desc = f"{data_type}({row[4]})"
+                
+                metadata[col_name] = {
+                    "comment": comment,
+                    "type": type_desc,
+                    "full_info": f"类型: {type_desc}\n说明: {comment}" if comment else f"类型: {type_desc}"
+                }
+                
+            return metadata
+        except Exception as e:
+            print(f"Error fetching metadata for {table_name}: {e}")
             return {}
 
     def execute_write(
