@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
+import time
 from sqlalchemy.exc import SQLAlchemyError
 
 from core.auth import check_authentication, login, logout
